@@ -1,0 +1,108 @@
+<html>
+<head>
+<script type="text/javascript" src="StateModel.js"></script>
+<link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+    <div id="resizewrapper"></div>
+    <div class="wrapper">
+        <div id="content" class="content">
+            <table id="t1" style="width:100%;table-layout:fixed">
+                <tr id="titlebar">
+                    <th style="width:15%;" id="h1">Feature</th>
+                    <th style="width:60%;" id="h2">Info</th>
+                </tr>
+            </table>
+            <table id="t2" style="width:100%;border-top-width:0px">
+            </table>
+        </div>
+        <div id="add_tag">+</div>
+        <div class="content">
+            <div>Connected users: <span id="nr_users"></span></div>
+            <br>
+            <div id="tag-lists"></div>
+        </div>
+        <div id="settings">
+            <image id="settings_icon" src="settings_icon.png" style="width:30px;height:30px;right:0px;position:absolute;"></image>
+            <div id="pane">
+                <div class="settings_row">
+                    <div class="settings_text">Require visbility in all groups</div>
+                    <div class="onoffswitch">
+                        <input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" id="settingAllGroups" checked>
+                        <label class="onoffswitch-label" for="settingAllGroups">
+                            <div class="onoffswitch-inner"></div>
+                            <div class="onoffswitch-switch"></div>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings_row">
+                    <div class="settings_text">Show if no tags</div>
+                    <div class="onoffswitch">
+                        <input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" id="settingNoTags" checked>
+                        <label class="onoffswitch-label" for="settingNoTags">
+                            <div class="onoffswitch-inner"></div>
+                            <div class="onoffswitch-switch"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<script>
+    
+    var ws;
+
+    var shiftPressed = false;
+    var dragging;
+    var project = window.location.pathname.replace(/\//,"").toLowerCase();
+
+    var transformprop = getsupportedprop([ "transform", "MozTransform", "webkitTransform" ]);
+
+    var currentState;
+
+    function connect() {
+        currentState = new StateModel(document.getElementById("t1"));
+        ws = new WebSocket("ws://localhost:8080"); 
+        ws.onopen = function() {
+            ws.send(JSON.stringify([{"initial":1, "project":project}]));
+        };
+        ws.onclose = function() {};
+        ws.onmessage = function(msg) { handleMessage(msg.data); };
+    }
+
+    function handleMessage(data) {
+        var message = JSON.parse(data);
+        console.log(message);
+        if (message.nr) {
+            ele = document.getElementById("nr_users");
+            ele.innerHTML = message.nr;
+        } else {
+            message.forEach(function(e) {
+                currentState.addUpdateFeature(e.feature_id, e.feature_name, e.info, e.tags, true);
+            });
+            currentState.draw();
+        }
+    }
+
+    function getsupportedprop(proparray) {
+        var root = document.documentElement //reference root element of document
+        for ( var i = 0; i < proparray.length; i++) { //loop through possible properties
+            if (typeof root.style[proparray[i]] == "string") { //if the property value is a string (versus undefined)
+                return proparray[i] //return that string
+            }
+        }
+    }
+
+    connect();
+    document.getElementById("add_tag").addEventListener("click", function(e){currentState.addTag("New");});
+    document.getElementById("settings_icon").addEventListener("click", showHideSettingsPane);
+    var inputs = document.getElementsByTagName("input");
+    for (var i = 0; i < inputs.length; i++) {
+        localStorage[inputs[i].id] = localStorage[inputs[i].id] || true;
+        inputs[i].checked = localStorage[inputs[i].id] == "true" ? true : false
+        inputs[i].addEventListener("change", handleInputChange);
+    };
+
+</script>
+</body>
+</html>
